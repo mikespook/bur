@@ -1,13 +1,21 @@
 package bur
 
 import (
-	"log"
+	"strings"
 	"sync"
+
+	"github.com/mikespook/golib/log"
 )
 
 func notYetImpl(k string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	log.Println(k, ": not yet implemented")
+	log.Errorf("%s: not yet implemented", strings.ToUpper(k))
+}
+
+func handleError(k string, err error) {
+	if err != nil {
+		log.Errorf("%s: %s", k, err)
+	}
 }
 
 func Serve() {
@@ -17,10 +25,10 @@ func Serve() {
 		switch k {
 		case "http":
 			wg.Add(1)
-			go httpServer(&wg)
+			go handleError("HTTP", httpServer(&wg))
 		case "https":
 			wg.Add(1)
-			go httpsServer(&wg)
+			go handleError("HTTPS", httpsServer(&wg))
 		case "socks4":
 			wg.Add(1)
 			go notYetImpl(k, &wg)

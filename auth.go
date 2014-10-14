@@ -14,11 +14,11 @@ const (
 
 var (
 	defaultAuth Auth = &authFobidden{}
-	users       map[string]string
+	users            = make(map[string]string)
 )
 
 type Auth interface {
-	Login(username string, password string) bool
+	Login(username string, password string) (bool, error)
 }
 
 func NewAuthRPC(network, address string) (auth *authRPC, err error) {
@@ -34,15 +34,13 @@ type authRPC struct {
 	*rpc.Client
 }
 
-func (auth *authRPC) Login(username string, password string) bool {
-	var success bool
+func (auth *authRPC) Login(username string, password string) (permit bool, err error) {
 	if err := auth.Call("Bur.Login",
 		map[string]string{"UserName": username, "Password": password},
-		&success); err != nil {
-		log.Println(err)
-		return false
+		&permit); err != nil {
+		return false, err
 	}
-	return success
+	return
 }
 
 type authPlain struct {
@@ -50,20 +48,20 @@ type authPlain struct {
 	Password string
 }
 
-func (auth *authPlain) Login(username string, password string) bool {
-	return auth.UserName == username && auth.Password == password
+func (auth *authPlain) Login(username string, password string) (bool, error) {
+	return auth.UserName == username && auth.Password == password, nil
 }
 
 type authFobidden struct{}
 
-func (auth *authFobidden) Login(username string, password string) bool {
-	return false
+func (auth *authFobidden) Login(username string, password string) (bool, error) {
+	return false, nil
 }
 
 type authAnonymous struct{}
 
-func (auth *authAnonymous) Login(username string, password string) bool {
-	return true
+func (auth *authAnonymous) Login(username string, password string) (bool, error) {
+	return true, nil
 }
 
 func usePlainAuth(config string) *authPlain {
@@ -109,8 +107,12 @@ func authHandle(username, password string) bool {
 	if password, ok := users[username]; ok {
 		return users[username] == password
 	}
-	if defaultAuth.Login(username, password) {
+	if permit, err := defaultAuth.Login(username, password); err != nil {
+		handleError("AUTH", err)
+		return false
+	} else if permit {
 		users[username] = password
+		return true
 	}
 	return false
 }

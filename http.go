@@ -1,7 +1,6 @@
 package bur
 
 import (
-	"log"
 	"net/http"
 	"sync"
 
@@ -9,34 +8,29 @@ import (
 	"github.com/elazarl/goproxy/ext/auth"
 )
 
-func httpServer(wg *sync.WaitGroup) {
-	defer wg.Done()
-	proxy := goproxy.NewProxyHttpServer()
+func newProxy() (proxy *goproxy.ProxyHttpServer) {
+	proxy = goproxy.NewProxyHttpServer()
 	if _config.Auth != "" {
 		auth.ProxyBasic(proxy, "bur", authHandle)
 	}
 	if _config.Debug {
 		proxy.Verbose = true
 	}
-	sc := _config.Proxy["http"]
-	if err := http.ListenAndServe(sc.Addr, proxy); err != nil {
-		log.Println(err)
-	}
+	return proxy
 }
 
-func httpsServer(wg *sync.WaitGroup) {
+func httpServer(wg *sync.WaitGroup) error {
 	defer wg.Done()
-	proxy := goproxy.NewProxyHttpServer()
-	if _config.Auth != "" {
-		auth.ProxyBasic(proxy, "bur", authHandle)
-	}
-	if _config.Debug {
-		proxy.Verbose = true
-	}
+	proxy := newProxy()
+	sc := _config.Proxy["http"]
+	return http.ListenAndServe(sc.Addr, proxy)
+}
+
+func httpsServer(wg *sync.WaitGroup) error {
+	defer wg.Done()
+	proxy := newProxy()
 	sc := _config.Proxy["https"]
 	certFile := sc.Params["cert"]
 	keyFile := sc.Params["key"]
-	if err := http.ListenAndServeTLS(sc.Addr, certFile, keyFile, proxy); err != nil {
-		log.Println(err)
-	}
+	return http.ListenAndServeTLS(sc.Addr, certFile, keyFile, proxy)
 }
