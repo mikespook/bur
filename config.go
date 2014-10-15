@@ -6,27 +6,23 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type serverConfig struct {
+type configService struct {
 	Addr   string
 	Params map[string]string
 }
 
-type config struct {
-	Proxy  map[string]serverConfig
+type Config struct {
+	Proxy  map[string]configService
 	Auth   string
 	Debug  bool
 	Access string
 }
 
-var _config config
-
-func ReadConfig(filename string) error {
+func LoadConfig(filename string) (config *Config, err error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		return
 	}
-	if err := yaml.Unmarshal(data, &_config); err != nil {
-		return err
-	}
-	return nil
+	err = yaml.Unmarshal(data, &config)
+	return
 }

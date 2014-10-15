@@ -8,28 +8,28 @@ import (
 	"github.com/elazarl/goproxy/ext/auth"
 )
 
-func newProxy() (proxy *goproxy.ProxyHttpServer) {
+func newProxy(ads string, debug bool) (proxy *goproxy.ProxyHttpServer) {
 	proxy = goproxy.NewProxyHttpServer()
-	if _config.Auth != "" {
+	if ads != "" {
 		auth.ProxyBasic(proxy, "bur", authHandle)
 	}
-	if _config.Debug {
+	if debug {
 		proxy.Verbose = true
 	}
 	return proxy
 }
 
-func httpServer(wg *sync.WaitGroup) error {
+func httpServer(config *Config, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	proxy := newProxy()
-	sc := _config.Proxy["http"]
+	proxy := newProxy(config.Auth, config.Debug)
+	sc := config.Proxy["http"]
 	return http.ListenAndServe(sc.Addr, proxy)
 }
 
-func httpsServer(wg *sync.WaitGroup) error {
+func httpsServer(config *Config, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	proxy := newProxy()
-	sc := _config.Proxy["https"]
+	proxy := newProxy(config.Auth, config.Debug)
+	sc := config.Proxy["https"]
 	certFile := sc.Params["cert"]
 	keyFile := sc.Params["key"]
 	return http.ListenAndServeTLS(sc.Addr, certFile, keyFile, proxy)

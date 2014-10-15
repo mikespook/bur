@@ -1,7 +1,6 @@
 package bur
 
 import (
-	"log"
 	"net/rpc"
 	"net/url"
 	"strings"
@@ -14,7 +13,6 @@ const (
 
 var (
 	defaultAuth Auth = &authFobidden{}
-	users            = make(map[string]string)
 )
 
 type Auth interface {
@@ -34,8 +32,8 @@ type authRPC struct {
 	*rpc.Client
 }
 
-func (auth *authRPC) Login(username string, password string) (permit bool, err error) {
-	if err := auth.Call("Bur.Login",
+func (a *authRPC) Login(username string, password string) (permit bool, err error) {
+	if err := a.Call("Bur.Login",
 		map[string]string{"UserName": username, "Password": password},
 		&permit); err != nil {
 		return false, err
@@ -44,12 +42,11 @@ func (auth *authRPC) Login(username string, password string) (permit bool, err e
 }
 
 type authPlain struct {
-	UserName string
-	Password string
+	User
 }
 
 func (auth *authPlain) Login(username string, password string) (bool, error) {
-	return auth.UserName == username && auth.Password == password, nil
+	return auth.Name == username && auth.Password == password, nil
 }
 
 type authFobidden struct{}
@@ -75,43 +72,40 @@ func usePlainAuth(config string) *authPlain {
 		username = tmp[0]
 		password = ""
 	}
-	return &authPlain{username, password}
+	return &authPlain{User{username, password, UserState{}}}
 }
 
-func useRPCAuth(config string) *authRPC {
+func useRPCAuth(config string) (aRPC *authRPC, err error) {
 	u, err := url.Parse(config)
 	if err != nil {
-		log.Println(err)
-		return nil
+		return
 	}
-	auth, err := NewAuthRPC(u.Scheme, u.Host)
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
-	return auth
+	return NewAuthRPC(u.Scheme, u.Host)
 }
 
-func initAuth() {
+func initAuth(config *Config) (err error) {
 	switch {
-	case _config.Auth == Anonymous:
+	case config.Auth == Anonymous:
 		defaultAuth = &authAnonymous{}
-	case strings.HasPrefix(_config.Auth, Plain):
-		defaultAuth = usePlainAuth(_config.Auth)
+	case strings.HasPrefix(config.Auth, Plain):
+		defaultAuth = usePlainAuth(config.Auth)
 	default:
-		defaultAuth = useRPCAuth(_config.Auth)
+		defaultAuth, err = useRPCAuth(config.Auth)
 	}
+	return
 }
 
 func authHandle(username, password string) bool {
-	if password, ok := users[username]; ok {
-		return users[username] == password
+	if user, ok := users[username]; ok {
+		match := (user.Password == password)
+		user.State.Login++
+		return match
 	}
 	if permit, err := defaultAuth.Login(username, password); err != nil {
 		handleError("AUTH", err)
 		return false
 	} else if permit {
-		users[username] = password
+		users[username] = User{username, password, UserState{Login: 1}}
 		return true
 	}
 	return false

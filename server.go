@@ -18,17 +18,20 @@ func handleError(k string, err error) {
 	}
 }
 
-func Serve() {
-	initAuth()
+func Serve(config *Config) {
+	if err := initAuth(config); err != nil {
+		handleError("AUTH", err)
+		return
+	}
 	var wg sync.WaitGroup
-	for k := range _config.Proxy {
+	for k := range config.Proxy {
 		switch k {
 		case "http":
 			wg.Add(1)
-			go handleError("HTTP", httpServer(&wg))
+			go handleError("HTTP", httpServer(config, &wg))
 		case "https":
 			wg.Add(1)
-			go handleError("HTTPS", httpsServer(&wg))
+			go handleError("HTTPS", httpsServer(config, &wg))
 		case "socks4":
 			wg.Add(1)
 			go notYetImpl(k, &wg)
@@ -41,6 +44,6 @@ func Serve() {
 		}
 	}
 	wg.Add(1)
-	go ctrlServer(&wg)
+	go ctrlServer(config, &wg)
 	wg.Wait()
 }
