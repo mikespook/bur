@@ -95,16 +95,28 @@ func initAuth(config *Config) (err error) {
 	return
 }
 
-func authHandle(username, password string) bool {
+func cachedAuth(username, password string) bool {
+	defer usersLock.RUnlock()
+	usersLock.RLock()
 	if user, ok := users[username]; ok {
+		usersLock.RUnlock()
 		match := (user.Password == password)
 		user.State.Login++
 		return match
+	}
+	return false
+}
+
+func authHandle(username, password string) bool {
+	if ok := cachedAuth(username, password); ok {
+		return true
 	}
 	if permit, err := defaultAuth.Login(username, password); err != nil {
 		handleError("AUTH", err)
 		return false
 	} else if permit {
+		defer usersLock.Unlock()
+		usersLock.Lock()
 		users[username] = User{username, password, UserState{Login: 1}}
 		return true
 	}
