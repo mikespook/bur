@@ -14,4 +14,4 @@ proxy:
         addr: 127.0.0.1:1723
 auth: plain://mikespook:123456
 debug: true
-ctrl: unix:///tmp/bur.sock
+state: unix:///tmp/bur.sock

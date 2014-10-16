@@ -33,8 +33,8 @@ type authRPC struct {
 }
 
 func (a *authRPC) Login(username string, password string) (permit bool, err error) {
-	if err := a.Call("Bur.Login",
-		map[string]string{"UserName": username, "Password": password},
+	if err := a.Call("User.Login",
+		map[string]string{"Name": username, "Password": password},
 		&permit); err != nil {
 		return false, err
 	}
@@ -95,29 +95,20 @@ func initAuth(config *Config) (err error) {
 	return
 }
 
-func cachedAuth(username, password string) bool {
-	defer usersLock.RUnlock()
-	usersLock.RLock()
-	if user, ok := users[username]; ok {
-		usersLock.RUnlock()
-		match := (user.Password == password)
-		user.State.Login++
-		return match
-	}
-	return false
-}
-
-func authHandle(username, password string) bool {
-	if ok := cachedAuth(username, password); ok {
+func authHandle(username, password string) (ok bool) {
+	defer func() {
+		if ok {
+			users.Get(username).Logined()
+		}
+	}()
+	if user := users.Get(username); user != nil && user.Password == password {
 		return true
 	}
 	if permit, err := defaultAuth.Login(username, password); err != nil {
 		handleError("AUTH", err)
 		return false
 	} else if permit {
-		defer usersLock.Unlock()
-		usersLock.Lock()
-		users[username] = User{username, password, UserState{Login: 1}}
+		users.Set(username, password)
 		return true
 	}
 	return false

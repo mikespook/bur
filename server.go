@@ -44,6 +44,6 @@ func Serve(config *Config) {
 		}
 	}
 	wg.Add(1)
-	go ctrlServer(config, &wg)
+	go handleError("STATE", stateServer(config, &wg))
 	wg.Wait()
 }
