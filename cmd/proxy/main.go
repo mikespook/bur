@@ -27,10 +27,11 @@ func main() {
 		flag.Usage()
 		return
 	}
-	if err := bur.ReadConfig(config); err != nil {
+	cfg, err := bur.LoadConfig(config)
+	if err != nil {
 		log.Printf("%s\n\n", err)
 		flag.Usage()
 		return
 	}
-	bur.Serve()
+	bur.Serve(cfg)
 }

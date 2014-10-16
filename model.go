@@ -18,7 +18,7 @@ func (state *State) ToTx(delta uint64) {
 }
 
 type User struct {
-	Name, Password string
+	Name, password string
 	State          UserState
 }
 
@@ -53,5 +53,5 @@ func (users *Users) Get(name string) *User {
 func (users *Users) Set(name, password string) {
 	defer users.Unlock()
 	users.Lock()
-	users.List[name] = &User{name, password, UserState{Login: 1}}
+	users.List[name] = &User{Name: name, password: password}
 }

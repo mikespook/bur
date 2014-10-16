@@ -46,7 +46,7 @@ type authPlain struct {
 }
 
 func (auth *authPlain) Login(username string, password string) (bool, error) {
-	return auth.Name == username && auth.Password == password, nil
+	return auth.Name == username && auth.password == password, nil
 }
 
 type authFobidden struct{}
@@ -101,7 +101,7 @@ func authHandle(username, password string) (ok bool) {
 			users.Get(username).Logined()
 		}
 	}()
-	if user := users.Get(username); user != nil && user.Password == password {
+	if user := users.Get(username); user != nil && user.password == password {
 		return true
 	}
 	if permit, err := defaultAuth.Login(username, password); err != nil {
