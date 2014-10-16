@@ -94,22 +94,3 @@ func initAuth(config *Config) (err error) {
 	}
 	return
 }
-
-func authHandle(username, password string) (ok bool) {
-	defer func() {
-		if ok {
-			users.Get(username).Logined()
-		}
-	}()
-	if user := users.Get(username); user != nil && user.password == password {
-		return true
-	}
-	if permit, err := defaultAuth.Login(username, password); err != nil {
-		handleError("AUTH", err)
-		return false
-	} else if permit {
-		users.Set(username, password)
-		return true
-	}
-	return false
-}

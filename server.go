@@ -6,60 +6,68 @@ import (
 	"log"
 )
 
-func notYetImpl(k string, wg *sync.WaitGroup) {
+func notYetImpl(wg *sync.WaitGroup) {
 	defer wg.Done()
-	log.Printf("%s: not yet implemented", k)
+	log.Printf("not yet implemented")
 }
 
-func handleError(k string, err error) {
-	if err != nil {
-		log.Printf("%s: %s", k, err)
+func authHandle(username, password string) (ok bool) {
+	defer func() {
+		if ok {
+			users.Get(username).Logined()
+		}
+	}()
+	if user := users.Get(username); user != nil && user.password == password {
+		return true
 	}
+	if permit, err := defaultAuth.Login(username, password); err != nil {
+		log.Println(err)
+		return false
+	} else if permit {
+		users.Set(username, password)
+		return true
+	}
+	return false
 }
 
 func Serve(config *Config) {
-	log.Printf("AUTH: %s", config.Auth)
+	log.Println(config)
 	if err := initAuth(config); err != nil {
-		handleError("AUTH", err)
+		log.Println(err)
 		return
 	}
 	var wg sync.WaitGroup
-	for k, c := range config.Proxy {
+	for k := range config.Proxy {
 		switch k {
 		case "http":
 			wg.Add(1)
-			log.Printf("HTTP: %s", c.Addr)
 			go func() {
 				if err := httpServer(config, &wg); err != nil {
-					log.Printf("HTTP: %s", err)
+					log.Println(err)
 				}
 			}()
 		case "https":
 			wg.Add(1)
-			log.Printf("HTTPS: %s %v", c.Addr, c.Params)
 			go func() {
 				if err := httpsServer(config, &wg); err != nil {
-					log.Printf("HTTPS: %s", err)
+					log.Println(err)
 				}
 			}()
 		case "socks4":
 			wg.Add(1)
-			log.Printf("SOCKS4: %s", c.Addr)
-			go notYetImpl(k, &wg)
+			go notYetImpl(&wg)
 		case "socks5":
 			wg.Add(1)
-			log.Printf("SOCKS5: %s", c.Addr)
-			go notYetImpl(k, &wg)
+			go notYetImpl(&wg)
 		case "vpn":
 			wg.Add(1)
-			log.Printf("VPN: %s", c.Addr)
-			go notYetImpl(k, &wg)
+			go notYetImpl(&wg)
 		}
 	}
 	wg.Add(1)
 	go func() {
 		if err := stateServer(config, &wg); err != nil {
-			log.Printf("STATE: %s", err)
+			log.Println(err)
 		}
 	}()
 	wg.Wait()

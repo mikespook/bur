@@ -29,7 +29,7 @@ func main() {
 	}
 	cfg, err := bur.LoadConfig(config)
 	if err != nil {
-		log.Printf("%s\n\n", err)
+		log.Printf("%v\n\n", err)
 		flag.Usage()
 		return
 	}

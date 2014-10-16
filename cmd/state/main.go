@@ -5,8 +5,9 @@ import (
 	"net/rpc"
 	"net/url"
 
+	"log"
+
 	"github.com/mikespook/bur"
-	"github.com/qiniu/log"
 )
 
 var (
@@ -45,7 +46,7 @@ func main() {
 	}
 	var state bur.State
 	if err := client.Call("Bur.State", "", &state); err != nil {
-		log.Error(err)
+		log.Println(err)
 		return
 	}
 	log.Printf("%v\n", state)
