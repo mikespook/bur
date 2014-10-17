@@ -4,8 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/rpc"
-	"net/url"
-	"sync"
+	"os"
 )
 
 var users = NewUsers()
@@ -28,20 +27,49 @@ func (b *Bur) State(a string, state *State) error {
 	return nil
 }
 
-func stateServer(config *Config, wg *sync.WaitGroup) error {
-	defer wg.Done()
+type StateServer struct {
+	l                net.Listener
+	network, address string
+}
+
+func (srv *StateServer) Close() {
+	if srv.l != nil {
+		srv.l.Close()
+	}
+	if srv.network == "unix" || srv.network == "unixpacket" {
+		os.Remove(srv.address)
+	}
+}
+
+func (srv *StateServer) Serve() {
+	rpc.Accept(srv.l)
+}
+
+var stateServer *StateServer
+
+func newStateServer(config *Config) (err error) {
+	srv := &StateServer{}
+	defer func() {
+		if err == nil {
+			stateServer = srv
+		}
+	}()
+	srv.network, srv.address, err = parseNewAddr(config.State.Addr)
+	if err != nil {
+		return
+	}
 	bur := &Bur{}
-	if err := rpc.RegisterName("Bur", bur); err != nil {
-		return err
+	if err = rpc.RegisterName("Bur", bur); err != nil {
+		return
 	}
-	u, err := url.Parse(config.State)
-	if err != nil {
-		return err
-	}
-	l, err := net.Listen(u.Scheme, u.Host)
-	if err != nil {
-		return err
-	}
-	rpc.Accept(l)
-	return nil
+	srv.l, err = net.Listen(srv.network, srv.address)
+	return
+}
+
+func serveStateServer() {
+	stateServer.Serve()
+}
+
+func closeStateServer() {
+	stateServer.Close()
 }

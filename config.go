@@ -11,11 +11,16 @@ type configService struct {
 	Params map[string]string
 }
 
+type configLog struct {
+	File, Level string
+}
+
 type Config struct {
 	Proxy map[string]configService
-	Auth  string
+	Auth  configService
 	Debug bool
-	State string
+	State configService
+	Log   configLog
 }
 
 func LoadConfig(filename string) (config *Config, err error) {

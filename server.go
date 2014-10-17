@@ -1,14 +1,15 @@
 package bur
 
 import (
+	"net/url"
+	"strings"
 	"sync"
 
-	"log"
+	"github.com/mikespook/golib/log"
 )
 
-func notYetImpl(wg *sync.WaitGroup) {
-	defer wg.Done()
-	log.Printf("not yet implemented")
+func notYetImpl(k string, wg *sync.WaitGroup) {
+
 }
 
 func authHandle(username, password string) (ok bool) {
@@ -21,7 +22,7 @@ func authHandle(username, password string) (ok bool) {
 		return true
 	}
 	if permit, err := defaultAuth.Login(username, password); err != nil {
-		log.Println(err)
+		log.Error(err)
 		return false
 	} else if permit {
 		users.Set(username, password)
@@ -31,44 +32,56 @@ func authHandle(username, password string) (ok bool) {
 }
 
 func Serve(config *Config) {
-	log.Println(config)
+	log.Messagef("AUTH: %v", config.Auth)
 	if err := initAuth(config); err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
-	var wg sync.WaitGroup
 	for k := range config.Proxy {
 		switch k {
 		case "http":
-			wg.Add(1)
 			go func() {
-				if err := httpServer(config, &wg); err != nil {
-					log.Println(err)
+				log.Messagef("HTTP: %v", config.Proxy["http"])
+				if err := httpServer(config); err != nil {
+					log.Error(err)
 				}
 			}()
 		case "https":
-			wg.Add(1)
 			go func() {
-				if err := httpsServer(config, &wg); err != nil {
-					log.Println(err)
+				log.Messagef("HTTPS: %v", config.Proxy["https"])
+				if err := httpsServer(config); err != nil {
+					log.Error(err)
 				}
 			}()
 		case "socks4":
-			wg.Add(1)
-			go notYetImpl(&wg)
+			log.Warning("SOCKS4: not yet implemented")
 		case "socks5":
-			wg.Add(1)
-			go notYetImpl(&wg)
+			log.Warning("SOCKS5: not yet implemented")
 		case "vpn":
-			wg.Add(1)
-			go notYetImpl(&wg)
+			log.Warning("VPN: not yet implemented")
 		}
 	}
-	wg.Add(1)
-	go func() {
-		if err := stateServer(config, &wg); err != nil {
-			log.Println(err)
-		}
-	}()
-	wg.Wait()
+	if err := newStateServer(config); err != nil {
+		log.Error(err)
+	}
+	go serveStateServer()
+}
+
+func Close() {
+	closeStateServer()
+}
+
+func parseNewAddr(ads string) (network, address string, err error) {
+	ads = strings.Replace(ads, ":///", "://file/", 1)
+	u, err := url.Parse(ads)
+	if err != nil {
+		return
+	}
+	network = u.Scheme
+	if u.Host == "file" {
+		address = u.Path
+	} else {
+		address = u.Host
+	}
+	return
 }

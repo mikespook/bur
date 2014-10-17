@@ -2,7 +2,6 @@ package bur
 
 import (
 	"net/rpc"
-	"net/url"
 	"strings"
 )
 
@@ -76,21 +75,21 @@ func usePlainAuth(config string) *authPlain {
 }
 
 func useRPCAuth(config string) (aRPC *authRPC, err error) {
-	u, err := url.Parse(config)
+	network, address, err := parseNewAddr(config)
 	if err != nil {
 		return
 	}
-	return NewAuthRPC(u.Scheme, u.Host)
+	return NewAuthRPC(network, address)
 }
 
 func initAuth(config *Config) (err error) {
 	switch {
-	case config.Auth == Anonymous:
+	case config.Auth.Addr == Anonymous:
 		defaultAuth = &authAnonymous{}
-	case strings.HasPrefix(config.Auth, Plain):
-		defaultAuth = usePlainAuth(config.Auth)
+	case strings.HasPrefix(config.Auth.Addr, Plain):
+		defaultAuth = usePlainAuth(config.Auth.Addr)
 	default:
-		defaultAuth, err = useRPCAuth(config.Auth)
+		defaultAuth, err = useRPCAuth(config.Auth.Addr)
 	}
 	return
 }
